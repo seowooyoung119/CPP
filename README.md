@@ -1,7 +1,8 @@
 # CPP
 
 ## vtable 관련
-[vtable 접근 및 상속](https://github.com/seowooyoung119/CPP/tree/main/vtable%EC%97%90%20%EB%8C%80%ED%95%B4/vtable%EC%97%90%20%EB%8C%80%ED%95%B4)
+[vtable 접근 및 상속](https://github.com/seowooyoung119/CPP/tree/main/vtable%EC%97%90%20%EB%8C%80%ED%95%B4/vtable%EC%97%90%20%EB%8C%80%ED%95%B4) <br>
+[pure virtual function called](https://github.com/seowooyoung119/CPP/tree/main/%EC%88%9C%EC%88%98%EA%B0%80%EC%83%81%ED%95%A8%EC%88%98%EC%98%A4%EB%B2%84%EB%9D%BC%EC%9D%B4%EB%93%9C%ED%85%8C%EC%8A%A4%ED%8A%B8/%EC%88%9C%EC%88%98%EA%B0%80%EC%83%81%ED%95%A8%EC%88%98%EC%98%A4%EB%B2%84%EB%9D%BC%EC%9D%B4%EB%93%9C%ED%85%8C%EC%8A%A4%ED%8A%B8) <br>
 
 ## 구조체, 클래스 관련
 [구조체 OOP in C++](https://github.com/seowooyoung119/CPP/tree/main/%EA%B5%AC%EC%A1%B0%EC%B2%B4%20OOP/%EA%B5%AC%EC%A1%B0%EC%B2%B4%20OOP)<br>
