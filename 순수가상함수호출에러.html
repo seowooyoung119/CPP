@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대화형 가이드: '순수 가상 함수 호출' 오류</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony -->
+    <!-- Application Structure Plan: The application is structured thematically to guide the user from understanding to action. It starts with a high-level overview (Introduction, Causes Chart), delves into core concepts, then splits into specific contexts (Standard C++ vs. Unreal Engine) for detailed exploration. Finally, it provides actionable tools (Interactive Debugging Playbook, Prevention Checklist). This task-oriented flow is more intuitive for a developer trying to either learn about the topic or solve a specific problem than the linear structure of the source report. Key interactions include toggling content, stepping through visual diagrams, and using a filter-based diagnostic tool. -->
+    <!-- Visualization & Content Choices: 1. Cause Analysis Chart (Radar Chart): Goal=Compare/Inform, Viz=Chart.js Radar, Interaction=Hover tooltips. Justification=Provides a quick, engaging overview of common causes and their debug difficulty, which is more impactful than a simple list. 2. C++ Lifecycle Diagram: Goal=Explain Process, Viz=HTML/CSS/JS diagram, Interaction=Clickable buttons to step through construction/destruction. Justification=Visually clarifies the complex concept of vtable/vptr changes during an object's lifetime, which is a primary cause of the error. 3. UE UFUNCTION Table: Goal=Organize/Compare, Viz=Interactive HTML table, Interaction=Click-to-expand rows. Justification=Makes the dense reference table from the report digestible and connects concepts directly to failure cases. 4. Debugging Playbook: Goal=Guide/Organize, Viz=HTML/JS dropdown-based filter, Interaction=User selection reveals targeted advice. Justification=Turns passive reading into an active, problem-solving tool. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #F8F4F0;
+            color: #4A4A4A;
+        }
+        .nav-link {
+            transition: color 0.3s, border-color 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link.active, .nav-link:hover {
+            color: #A95C44;
+            border-bottom-color: #A95C44;
+        }
+        .card {
+            background-color: #FFFFFF;
+            border: 1px solid #EAE0D5;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .tab-button {
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .tab-button.active {
+            background-color: #4A7C59;
+            color: white;
+        }
+        .step-highlight {
+            transition: all 0.5s ease-in-out;
+            border: 2px solid #A95C44;
+            background-color: #FDF8F2;
+        }
+        .details-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .details-content.open {
+            max-height: 1000px;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-3">
+            <ul class="flex justify-center space-x-4 md:space-x-8 text-sm md:text-base">
+                <li><a href="#intro" class="nav-link px-2 py-2">소개</a></li>
+                <li><a href="#causes" class="nav-link px-2 py-2">핵심 원인</a></li>
+                <li><a href="#cpp" class="nav-link px-2 py-2">C++ 시나리오</a></li>
+                <li><a href="#unreal" class="nav-link px-2 py-2">언리얼 엔진</a></li>
+                <li><a href="#debug" class="nav-link px-2 py-2">디버깅</a></li>
+                <li><a href="#prevent" class="nav-link px-2 py-2">예방</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-8 md:py-12">
+
+        <section id="intro" class="text-center mb-16 md:mb-24 scroll-mt-20">
+            <h1 class="text-4xl md:text-5xl font-bold text-[#A95C44] mb-4">Pure Virtual Function Called 오류</h1>
+            <p class="text-lg md:text-xl max-w-3xl mx-auto text-gray-600">이 대화형 가이드는 C++와 언리얼 엔진 개발자가 마주치는 가장 치명적인 런타임 오류 중 하나인 '순수 가상 함수 호출'의 원인을 분석하고, 효과적인 디버깅 및 예방 전략을 제시합니다.</p>
+        </section>
+
+        <section id="causes" class="mb-16 md:mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-2">오류 발생 원인 분석</h2>
+            <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">이 오류는 다양한 원인으로 발생하며, 발생 빈도와 디버깅 난이도가 다릅니다. 이 차트는 주요 원인을 한눈에 파악하는 데 도움을 줍니다.</p>
+            <div class="chart-container">
+                <canvas id="causesChart"></canvas>
+            </div>
+        </section>
+
+        <section id="concepts" class="mb-16 md:mb-24 scroll-mt-20">
+             <h2 class="text-3xl font-bold text-center mb-8">핵심 개념 다시보기</h2>
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="card p-6 rounded-lg cursor-pointer" onclick="toggleDetails('details-pure-virtual')">
+                    <h3 class="font-bold text-xl mb-2 text-[#4A7C59]">✨ 순수 가상 함수</h3>
+                    <p class="text-gray-600">파생 클래스에서 반드시 재정의해야 하는 인터페이스 계약입니다. 클릭하여 자세히 알아보세요.</p>
+                    <div id="details-pure-virtual" class="details-content mt-4 text-sm text-gray-700 border-t pt-4">
+                        <p><code>= 0</code> 구문으로 선언된 가상 함수로, 이를 포함하는 클래스는 추상 클래스가 됩니다. 기본 클래스에서 구현을 제공할 수도 있지만, 주 목적은 파생 클래스에게 구현을 강제하는 것입니다.</p>
+                    </div>
+                </div>
+                <div class="card p-6 rounded-lg cursor-pointer" onclick="toggleDetails('details-abstract-class')">
+                    <h3 class="font-bold text-xl mb-2 text-[#4A7C59]">🏛️ 추상 클래스</h3>
+                    <p class="text-gray-600">스스로 인스턴스화될 수 없으며, 오직 기본 클래스로만 사용됩니다. 클릭하여 자세히 알아보세요.</p>
+                    <div id="details-abstract-class" class="details-content mt-4 text-sm text-gray-700 border-t pt-4">
+                        <p>하나 이상의 순수 가상 함수를 포함하는 클래스입니다. 직접 객체를 만들 수 없으며, 모든 순수 가상 함수를 구현한 파생 클래스만이 구체적인 객체를 생성할 수 있습니다.</p>
+                    </div>
+                </div>
+                 <div class="card p-6 rounded-lg cursor-pointer" onclick="toggleDetails('details-vtable')">
+                    <h3 class="font-bold text-xl mb-2 text-[#4A7C59]">📜 V-Table (가상 테이블)</h3>
+                    <p class="text-gray-600">다형적 함수 호출의 핵심 메커니즘입니다. 클릭하여 자세히 알아보세요.</p>
+                    <div id="details-vtable" class="details-content mt-4 text-sm text-gray-700 border-t pt-4">
+                        <p>가상 함수에 대한 포인터 배열입니다. 객체는 자신의 실제 타입에 맞는 v-table을 가리키는 숨겨진 포인터(vptr)를 가지며, 이를 통해 런타임에 올바른 함수가 호출됩니다. '순수 가상 함수 호출'은 v-table의 해당 항목이 오류 핸들러를 가리킬 때 발생합니다.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="cpp" class="mb-16 md:mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-2">표준 C++의 주요 원인: 객체 생명주기</h2>
+            <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">가장 흔한 오류의 원인은 객체가 완전히 생성되기 전이나, 이미 소멸된 후에 가상 함수를 호출하는 것입니다. 아래의 대화형 다이어그램은 이 과정을 보여줍니다.</p>
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="flex justify-center space-x-4 mb-6">
+                    <button class="bg-[#4A7C59] text-white px-4 py-2 rounded-md hover:bg-opacity-80 transition" onclick="runLifecycle('construct')">생성 과정 시뮬레이션</button>
+                    <button class="bg-[#A95C44] text-white px-4 py-2 rounded-md hover:bg-opacity-80 transition" onclick="runLifecycle('destruct')">소멸 과정 시뮬레이션</button>
+                </div>
+                <div class="grid md:grid-cols-2 gap-6 relative">
+                    <div id="base-class" class="border-2 border-gray-300 p-4 rounded-lg">
+                        <h4 class="font-bold">Base Class</h4>
+                        <div class="mt-2 text-sm">
+                            <p>Constructor()</p>
+                            <p>Destructor()</p>
+                            <p><code>virtual void myFunc() = 0;</code></p>
+                        </div>
+                    </div>
+                    <div id="derived-class" class="border-2 border-gray-300 p-4 rounded-lg">
+                        <h4 class="font-bold">Derived Class</h4>
+                        <div class="mt-2 text-sm">
+                            <p>Constructor()</p>
+                            <p>Destructor()</p>
+                            <p><code>virtual void myFunc() override;</code></p>
+                        </div>
+                    </div>
+                </div>
+                <div id="lifecycle-status" class="mt-6 p-4 bg-gray-100 rounded-lg text-center">
+                    <p class="font-semibold">상태: 시뮬레이션을 시작하세요.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="unreal" class="mb-16 md:mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-2">언리얼 엔진 특정 시나리오</h2>
+            <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">언리얼 엔진의 UObject 모델, 리플렉션, 블루프린트 상호운용성은 오류 발생에 새로운 복잡성을 더합니다. 각 탭을 클릭하여 특정 시나리오를 살펴보세요.</p>
+            <div class="bg-white rounded-lg shadow-lg p-2 md:p-6">
+                <div class="flex flex-wrap justify-center border-b mb-4">
+                    <button id="tab-btn-ufunction" class="tab-button px-4 py-2 m-1 rounded-md font-semibold active" onclick="switchTab('ufunction')">UFUNCTION</button>
+                    <button id="tab-btn-lifecycle" class="tab-button px-4 py-2 m-1 rounded-md font-semibold" onclick="switchTab('lifecycle')">UObject 생명주기</button>
+                    <button id="tab-btn-pitfalls" class="tab-button px-4 py-2 m-1 rounded-md font-semibold" onclick="switchTab('pitfalls')">일반적인 함정</button>
+                </div>
+
+                <div id="tab-content-ufunction" class="tab-content">
+                    <h3 class="font-bold text-xl mb-4">UFUNCTION 지정자와 가상 함수</h3>
+                    <p class="mb-4 text-gray-600">`UFUNCTION` 매크로는 C++ 가상 함수와 다르게 동작하며, 특히 블루프린트와 상호작용할 때 혼란을 야기할 수 있습니다. 각 항목을 클릭하여 자세한 내용을 확인하세요.</p>
+                    <div class="space-y-2">
+                        <div class="border rounded-md">
+                            <button class="w-full text-left p-4 font-semibold flex justify-between items-center" onclick="toggleDetails('details-bne')">
+                                <span>BlueprintNativeEvent</span> <span>&#9662;</span>
+                            </button>
+                            <div id="details-bne" class="details-content px-4 pb-4">
+                                <p><strong>역할:</strong> C++ 기본 구현을 가지면서 블루프린트에서 재정의할 수 있는 함수입니다.</p>
+                                <p><strong>함정:</strong> UHT는 가상인 `_Implementation` 함수를 생성합니다. 블루프린트에서 부모 함수를 호출하지만 C++ `_Implementation`이 비어있으면, 사실상 순수 가상 함수를 호출하는 것과 같아져 오류가 발생할 수 있습니다.</p>
+                            </div>
+                        </div>
+                        <div class="border rounded-md">
+                            <button class="w-full text-left p-4 font-semibold flex justify-between items-center" onclick="toggleDetails('details-bie')">
+                                <span>BlueprintImplementableEvent</span> <span>&#9662;</span>
+                            </button>
+                            <div id="details-bie" class="details-content px-4 pb-4">
+                                <p><strong>역할:</strong> 블루프린트에서만 구현되도록 설계된 함수입니다.</p>
+                                <p><strong>함정:</strong> C++ 코드가 블루프린트 구현이 없는 이 함수를 호출하려고 하면, 호출할 대상이 없으므로 문제가 발생할 수 있습니다.</p>
+                            </div>
+                        </div>
+                        <div class="border rounded-md">
+                            <button class="w-full text-left p-4 font-semibold flex justify-between items-center" onclick="toggleDetails('details-purevirtual')">
+                                <span>PURE_VIRTUAL 매크로</span> <span>&#9662;</span>
+                            </button>
+                            <div id="details-purevirtual" class="details-content px-4 pb-4">
+                                <p><strong>역할:</strong> C++의 ` = 0`과 유사하게 파생 클래스의 재정의를 강제하지만, CDO(클래스 기본 객체) 생성을 위해 빈 C++ 본문을 허용합니다.</p>
+                                <p><strong>함정:</strong> 이 함수가 재정의 없이 호출되면, 내부적으로 의도된 오류를 발생시켜 '순수 가상 함수 호출' 충돌을 일으킵니다.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-content-lifecycle" class="tab-content hidden">
+                    <h3 class="font-bold text-xl mb-4">UObject 생명주기와 메모리 관리</h3>
+                     <p class="mb-4 text-gray-600">언리얼의 가비지 컬렉션과 객체 생명주기는 표준 C++과 다릅니다. 이 차이를 이해하는 것이 중요합니다.</p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                        <li><strong>자동 초기화:</strong> `UObject` 포인터는 `UPROPERTY()`로 지정하면 소멸 시 자동으로 `nullptr`로 설정되어 매달린 포인터(dangling pointer)를 방지합니다.</li>
+                        <li><strong>`NewObject<T>()`:</strong> `UObject`는 항상 `NewObject<T>()`로 생성해야 가비지 컬렉터가 올바르게 관리할 수 있습니다.</li>
+                        <li><strong>`BeginDestroy()`:</strong> C++ 소멸자와 유사하게, 이 가상 함수가 호출될 때는 이미 객체가 부분적으로 파괴된 상태일 수 있으므로 여기서 다른 가상 함수를 호출하는 것은 위험합니다.</li>
+                        <li><strong>`TWeakObjectPtr`:</strong> 소유하지 않는 참조에는 `TWeakObjectPtr`을 사용하고, 접근 전 항상 `IsValid()`로 유효성을 검사하여 매달린 포인터 접근을 막아야 합니다.</li>
+                    </ul>
+                </div>
+
+                <div id="tab-content-pitfalls" class="tab-content hidden">
+                     <h3 class="font-bold text-xl mb-4">일반적인 함정과 발생 상황</h3>
+                    <p class="mb-4 text-gray-600">오류는 종종 특정 상황에서 집중적으로 발생합니다. 이는 근본 원인에 대한 중요한 단서를 제공합니다.</p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                       <li><strong>레벨 로딩:</strong> `Open Level` 시 자주 발생합니다. 이는 새 레벨의 객체들이 초기화되거나 이전 레벨의 객체들이 소멸되는 복잡한 과정에서 객체 상태가 불안정하기 때문입니다.</li>
+                       <li><strong>에디터 프리뷰:</strong> 시퀀서나 PIE(Play-In-Editor)와 같은 특정 에디터 모드에서 발생할 수 있으며, 이는 게임 실행 상태와 다른 임시 객체 생명주기 때문일 수 있습니다.</li>
+                        <li><strong>에셋 문제:</strong> 특정 에셋(예: 애니메이션 블루프린트, Flipbook)을 로드하거나 사용할 때 오류가 발생한다면, 해당 에셋 타입의 내부 초기화/소멸 로직에 문제가 있을 수 있습니다.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="debug" class="mb-16 md:mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-2">대화형 디버깅 플레이북</h2>
+            <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">어떤 상황에서 오류가 발생했나요? 상황을 선택하면 가장 가능성 있는 원인과 디버깅 전략을 알려드립니다.</p>
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="flex flex-col md:flex-row gap-4 mb-6">
+                    <select id="debug-context" class="w-full p-3 border rounded-md bg-gray-50">
+                        <option value="default" selected>1. 오류 발생 맥락을 선택하세요</option>
+                        <option value="constructor">객체 생성자(Constructor) 내부</option>
+                        <option value="destructor">객체 소멸자(Destructor) 내부</option>
+                        <option value="blueprint">블루프린트 함수 호출 시</option>
+                        <option value="level-load">레벨을 로딩할 때</option>
+                        <option value="dangling-pointer">객체 소멸 후 포인터 접근 시</option>
+                    </select>
+                    <button class="bg-[#4A7C59] text-white px-6 py-3 rounded-md hover:bg-opacity-80 transition" onclick="showDebugAdvice()">분석하기</button>
+                </div>
+                <div id="debug-advice" class="p-4 bg-gray-100 rounded-lg hidden">
+                    <h4 id="advice-title" class="font-bold text-lg mb-2"></h4>
+                    <p id="advice-cause" class="mb-2"></p>
+                    <p id="advice-solution" class="font-semibold"></p>
+                </div>
+            </div>
+        </section>
+        
+        <section id="prevent" class="scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center mb-8">예방을 위한 모범 사례 체크리스트</h2>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-bold text-xl mb-4 text-[#4A7C59]">C++ 디자인 원칙</h3>
+                    <ul class="space-y-3">
+                        <li class="flex items-start"><span class="mr-3 mt-1 text-green-600">✔️</span><span><strong>생성자/소멸자 내 가상 호출 금지:</strong> 객체 생명주기의 불안정한 단계에서 다형적 호출을 피합니다.</span></li>
+                        <li class="flex items-start"><span class="mr-3 mt-1 text-green-600">✔️</span><span><strong>NVI (Non-Virtual Interface) 패턴 활용:</strong> public 비가상 함수가 private 가상 함수를 호출하도록 설계하여 호출 시점을 제어합니다.</span></li>
+                        <li class="flex items-start"><span class="mr-3 mt-1 text-green-600">✔️</span><span><strong>스마트 포인터 적극 사용:</strong> `TUniquePtr`, `TSharedPtr` 등을 활용하여 객체 소유권을 명확히 하고 메모리 누수를 방지합니다.</span></li>
+                    </ul>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="font-bold text-xl mb-4 text-[#A95C44]">언리얼 엔진 관리 규칙</h3>
+                     <ul class="space-y-3">
+                        <li class="flex items-start"><span class="mr-3 mt-1 text-green-600">✔️</span><span><strong>`UPROPERTY()` 생활화:</strong> UObject 포인터를 `UPROPERTY()`로 감싸 가비지 컬렉터가 관리하도록 합니다.</span></li>
+                        <li class="flex items-start"><span class="mr-3 mt-1 text-green-600">✔️</span><span><strong>`TWeakObjectPtr`과 `IsValid()`:</strong> 비소유 참조에는 `TWeakObjectPtr`을 사용하고, 접근 전 항상 `IsValid()`로 유효성을 확인합니다.</span></li>
+                        <li class="flex items-start"><span class="mr-3 mt-1 text-green-600">✔️</span><span><strong>`BlueprintNativeEvent`의 C++ 구현 제공:</strong> 블루프린트가 재정의하지 않을 경우를 대비해 안정적인 기본 `_Implementation`을 제공합니다.</span></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="text-center py-6 mt-12 border-t border-gray-200">
+        <p class="text-sm text-gray-500">이 대화형 가이드는 제공된 기술 보고서를 기반으로 제작되었습니다.</p>
+    </footer>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const causesChartCtx = document.getElementById('causesChart').getContext('2d');
+        new Chart(causesChartCtx, {
+            type: 'radar',
+            data: {
+                labels: ['생성자/소멸자 호출', '매달린 포인터', 'BP/C++ 연동 오류', '레벨 로딩', 'V-Table 손상'],
+                datasets: [{
+                    label: '발생 빈도',
+                    data: [9, 7, 8, 6, 3],
+                    backgroundColor: 'rgba(74, 124, 89, 0.2)',
+                    borderColor: 'rgba(74, 124, 89, 1)',
+                    pointBackgroundColor: 'rgba(74, 124, 89, 1)',
+                    borderWidth: 2
+                }, {
+                    label: '디버깅 난이도',
+                    data: [5, 8, 7, 9, 10],
+                    backgroundColor: 'rgba(169, 92, 68, 0.2)',
+                    borderColor: 'rgba(169, 92, 68, 1)',
+                    pointBackgroundColor: 'rgba(169, 92, 68, 1)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        },
+                        suggestedMin: 0,
+                        suggestedMax: 10,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        },
+                        pointLabels: {
+                            font: {
+                                size: 12,
+                                family: "'Noto Sans KR', sans-serif"
+                            },
+                             color: '#4A4A4A'
+                        },
+                        ticks: {
+                           display: false,
+                           stepSize: 2
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                         labels: {
+                            font: {
+                                size: 12,
+                                family: "'Noto Sans KR', sans-serif"
+                            }
+                        }
+                    },
+                    tooltip: {
+                         bodyFont: {
+                            family: "'Noto Sans KR', sans-serif"
+                        },
+                        titleFont: {
+                           family: "'Noto Sans KR', sans-serif"
+                        }
+                    }
+                }
+            }
+        });
+
+        const navLinks = document.querySelectorAll('.nav-link');
+        const sections = document.querySelectorAll('main section');
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    navLinks.forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href').substring(1) === entry.target.id) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }, { rootMargin: '-50% 0px -50% 0px' });
+
+        sections.forEach(section => observer.observe(section));
+    });
+
+    function toggleDetails(id) {
+        const content = document.getElementById(id);
+        const button = content.previousElementSibling;
+        const arrow = button.querySelector('span:last-child');
+        
+        content.classList.toggle('open');
+        if (content.classList.contains('open')) {
+             arrow.style.transform = 'rotate(180deg)';
+        } else {
+             arrow.style.transform = 'rotate(0deg)';
+        }
+    }
+
+    function switchTab(tabId) {
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabContents.forEach(content => content.classList.add('hidden'));
+        document.getElementById(`tab-content-${tabId}`).classList.remove('hidden');
+
+        const tabButtons = document.querySelectorAll('.tab-button');
+        tabButtons.forEach(button => button.classList.remove('active'));
+        document.getElementById(`tab-btn-${tabId}`).classList.add('active');
+    }
+    
+    const lifecycleStatus = document.getElementById('lifecycle-status');
+    const baseClassEl = document.getElementById('base-class');
+    const derivedClassEl = document.getElementById('derived-class');
+    let animationTimeout;
+
+    function runLifecycle(type) {
+        clearTimeout(animationTimeout);
+        baseClassEl.classList.remove('step-highlight');
+        derivedClassEl.classList.remove('step-highlight');
+
+        if (type === 'construct') {
+            lifecycleStatus.innerHTML = `<p class="font-semibold">1. Base 클래스 생성자 실행 중...</p><p class="text-sm text-red-600">이 시점에서 객체의 타입은 'Base'입니다. myFunc() 호출 시 순수 가상 함수 오류 발생!</p>`;
+            baseClassEl.classList.add('step-highlight');
+            animationTimeout = setTimeout(() => {
+                lifecycleStatus.innerHTML = `<p class="font-semibold">2. Derived 클래스 생성자 실행 중...</p><p class="text-sm text-green-600">이제 객체의 타입은 'Derived'입니다. myFunc() 호출이 안전합니다.</p>`;
+                baseClassEl.classList.remove('step-highlight');
+                derivedClassEl.classList.add('step-highlight');
+                animationTimeout = setTimeout(() => {
+                    lifecycleStatus.innerHTML = `<p class="font-semibold">생성 완료.</p><p>객체가 완전히 형성되었습니다.</p>`;
+                    derivedClassEl.classList.remove('step-highlight');
+                }, 3000);
+            }, 3000);
+        } else { // destruct
+            lifecycleStatus.innerHTML = `<p class="font-semibold">1. Derived 클래스 소멸자 실행 중...</p><p class="text-sm text-green-600">아직 객체의 타입은 'Derived'입니다. myFunc() 호출이 안전합니다.</p>`;
+            derivedClassEl.classList.add('step-highlight');
+            animationTimeout = setTimeout(() => {
+                lifecycleStatus.innerHTML = `<p class="font-semibold">2. Base 클래스 소멸자 실행 중...</p><p class="text-sm text-red-600">이 시점에서 객체 타입은 다시 'Base'가 되었습니다. myFunc() 호출 시 오류 발생!</p>`;
+                derivedClassEl.classList.remove('step-highlight');
+                baseClassEl.classList.add('step-highlight');
+                animationTimeout = setTimeout(() => {
+                    lifecycleStatus.innerHTML = `<p class="font-semibold">소멸 완료.</p><p>객체가 완전히 파괴되었습니다.</p>`;
+                    baseClassEl.classList.remove('step-highlight');
+                }, 3000);
+            }, 3000);
+        }
+    }
+    
+    const debugAdviceData = {
+        'constructor': {
+            title: '생성자 내부에서의 호출',
+            cause: '객체가 아직 완전히 생성되지 않아 파생 클래스의 가상 함수 구현이 준비되지 않은 상태입니다. 객체의 v-table이 아직 기본 클래스의 것을 가리키고 있습니다.',
+            solution: '호출 스택을 분석하여 생성자에서 직접 또는 간접적으로 가상 함수를 호출하는지 확인하세요. NVI 패턴을 사용하거나, 필요한 데이터를 생성자 매개변수로 전달하는 방식을 고려하세요.'
+        },
+        'destructor': {
+            title: '소멸자 내부에서의 호출',
+            cause: '파생 클래스의 부분이 이미 소멸되어 가상 함수 구현에 더 이상 접근할 수 없습니다. 객체의 v-table이 다시 기본 클래스의 것으로 돌아간 상태입니다.',
+            solution: '호출 스택을 분석하여 소멸자에서 가상 함수를 호출하는 부분을 찾으세요. 필요한 정리는 파생 클래스 소멸자에서 미리 수행해야 합니다.'
+        },
+        'blueprint': {
+            title: '블루프린트 함수 호출',
+            cause: '`BlueprintNativeEvent`의 C++ `_Implementation`이 없거나, 부모 함수 호출 노드가 비어있는 C++ 함수를 가리키고 있을 가능성이 높습니다.',
+            solution: '블루프린트 디버거와 호출 스택을 확인하세요. C++ `_Implementation`에 안정적인 기본 동작을 추가하거나, 블루프린트에서 해당 함수를 올바르게 재정의했는지 검토하세요.'
+        },
+        'level-load': {
+            title: '레벨 로딩 중',
+            cause: '레벨 전환 중 객체 초기화/소멸 순서가 꼬여, 불완전하거나 이미 소멸된 객체에 접근하고 있을 수 있습니다.',
+            solution: '`UE_LOG`를 사용하여 객체들의 `BeginPlay`, `EndPlay`, `BeginDestroy` 호출 순서를 추적하세요. 레벨 스트리밍을 사용하거나, 로딩/언로딩 관련 로직을 신중하게 검토하세요.'
+        },
+        'dangling-pointer': {
+            title: '객체 소멸 후 접근',
+            cause: '이미 소멸된 객체를 가리키는 포인터(매달린 포인터)를 통해 가상 함수를 호출했습니다. 언리얼 엔진에서는 `UPROPERTY()`로 관리되지 않는 원시 포인터에서 주로 발생합니다.',
+            solution: '`UPROPERTY()`를 사용하여 UObject 포인터를 관리하고, 비소유 참조에는 `TWeakObjectPtr`을 사용한 후 `IsValid()` 검사를 생활화하세요. 원시 포인터의 수명 관리를 철저히 해야 합니다.'
+        },
+        'default': {
+            title: '분석할 맥락을 선택해주세요.',
+            cause: '',
+            solution: ''
+        }
+    };
+
+    function showDebugAdvice() {
+        const context = document.getElementById('debug-context').value;
+        const advice = debugAdviceData[context];
+        
+        const adviceContainer = document.getElementById('debug-advice');
+        document.getElementById('advice-title').textContent = advice.title;
+        document.getElementById('advice-cause').textContent = "예상 원인: " + advice.cause;
+        document.getElementById('advice-solution').textContent = "해결 전략: " + advice.solution;
+
+        if (context === 'default') {
+             adviceContainer.classList.add('hidden');
+        } else {
+            adviceContainer.classList.remove('hidden');
+        }
+    }
+
+</script>
+</body>
+</html>
